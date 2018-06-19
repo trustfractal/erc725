@@ -2,5 +2,6 @@
 
 ```bash
 npm install
+ganache-cli
 npm start
 ```
