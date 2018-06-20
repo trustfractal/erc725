@@ -221,6 +221,8 @@ var deployVeryGoodCrowdsale = async (jsonClaimHolder, account, constructorArgume
       "",
     ).encodeABI();
 
+  // XXX comment this out to see the whole thing fail
+  // (Investor's subsequent balance will be 0)
   await investorClaimHolder.methods.execute(
     investorClaimHolder.options.address,
     0,
@@ -231,17 +233,16 @@ var deployVeryGoodCrowdsale = async (jsonClaimHolder, account, constructorArgume
   });
 
   // FractalLp checks for claim
-  console.log("FractalLp checking for claim...");
-
   // FIXME why doesn't this work?
   //var fractalIdKYCclaimId = web3.utils.keccak256(claimIssuer, CLAIM_TYPES.KYC);
   //console.log(await investorClaimHolder.methods.getClaim(fractalIdKYCclaimId).call());
-
-  console.log(await investorClaimHolder.methods.getClaimIdsByType(CLAIM_TYPES.KYC).call());
+  // XXX but this does?
+  //console.log("Claim", await investorClaimHolder.methods.getClaimIdsByType(CLAIM_TYPES.KYC).call());
 
 
   // FractalLp deploys token and crowdsale
 
+  console.log("FractalLp deploying token and crowdsale contracts...");
   var veryGoodCoin = await deployVeryGoodCoin(
     jsonCrowdsale,
     accounts[0],
@@ -255,9 +256,11 @@ var deployVeryGoodCrowdsale = async (jsonClaimHolder, account, constructorArgume
 
   await veryGoodCoin.methods.transferOwnership(veryGoodCrowdsale.options.address).send({from: accounts[0]});
 
+
   // Investor makes transfer
   
-  console.log(await veryGoodCoin.methods.balanceOf(accounts[2]).call());
+  console.log("Investor participating in crowdsale, which will check for the claim...");
+  console.log("\tInvestor initial balance:", await veryGoodCoin.methods.balanceOf(accounts[2]).call());
 
   var investABI = await veryGoodCrowdsale.methods.buyTokens(
     investorClaimHolder.options.address
@@ -275,23 +278,8 @@ var deployVeryGoodCrowdsale = async (jsonClaimHolder, account, constructorArgume
   });
 
   //console.log(await veryGoodCrowdsale.getPastEvents("allEvents", {fromBlock: 0, toBlock: "latest"}));
-  console.log(await veryGoodCoin.methods.balanceOf(investorClaimHolder.options.address).call());
+  console.log("\tInvestor's subsequent balance:", await veryGoodCoin.methods.balanceOf(investorClaimHolder.options.address).call());
   //console.log(await veryGoodCoin.methods.totalSupply().call());
   //console.log(await veryGoodCrowdsale.methods.weiRaised().call());
 
-
-  /*
-  return
-
-  console.log(await veryGoodCoin.methods.balanceOf(accounts[2]).call());
-
-  await web3.eth.sendTransaction({
-    from: accounts[2],
-    to: veryGoodCrowdsale.options.address,
-    value: web3.utils.toWei("1", "ether"),
-    gas: 300000,
-  });
-
-  console.log(await veryGoodCoin.methods.balanceOf(accounts[2]).call());
-  */
 })()
