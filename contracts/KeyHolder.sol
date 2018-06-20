@@ -83,7 +83,7 @@ contract KeyHolder is ERC725 {
 
         if (_approve == true) {
             executions[_id].approved = true;
-            success = executions[_id].to.call(executions[_id].data, 0);
+            success = executions[_id].to.call.value(executions[_id].value)(executions[_id].data, 0);
             if (success) {
                 executions[_id].executed = true;
                 emit Executed(
@@ -110,6 +110,7 @@ contract KeyHolder is ERC725 {
 
     function execute(address _to, uint256 _value, bytes _data)
         public
+        payable
         returns (uint256 executionId)
     {
         require(!executions[executionNonce].executed, "Already executed");
