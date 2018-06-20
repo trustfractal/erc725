@@ -33,21 +33,9 @@ var compileClaimHolder = () => {
 
   var compileOptions = JSON.stringify({
     sources: {
-      //"ERC725.sol": {
-      //  content: fs.readFileSync("contracts/ERC725.sol", "utf8").toString()
-      //},
-      //"ERC735.sol": {
-      //  content: fs.readFileSync("contracts/ERC735.sol", "utf8").toString()
-      //},
-      //"KeyHolder.sol": {
-      //  content: fs.readFileSync("contracts/KeyHolder.sol", "utf8").toString()
-      //},
       "ClaimHolder.sol": {
         content: fs.readFileSync("contracts/ClaimHolder.sol", "utf8").toString()
       },
-      //"ClaimVerifier.sol": {
-      //  content: fs.readFileSync("contracts/ClaimVerifier.sol", "utf8").toString()
-      //},
     },
     language: 'Solidity',
     settings: {
@@ -72,6 +60,59 @@ var compileClaimHolder = () => {
   return jsonOutput;
 };
 
+var compileCrowdsale = () => {
+  var findImportsPath = function(prefix) {
+    return function findImports(path) {
+        return {
+          contents: fs.readFileSync(prefix + path).toString()
+        }
+    }
+  }
+
+  var compileOptions = JSON.stringify({
+    sources: {
+      "ERC725.sol": {
+        content: fs.readFileSync("contracts/ERC725.sol", "utf8").toString()
+      },
+      "ERC735.sol": {
+        content: fs.readFileSync("contracts/ERC735.sol", "utf8").toString()
+      },
+      "KeyHolder.sol": {
+        content: fs.readFileSync("contracts/KeyHolder.sol", "utf8").toString()
+      },
+      "ClaimHolder.sol": {
+        content: fs.readFileSync("contracts/ClaimHolder.sol", "utf8").toString()
+      },
+      "VeryGoodCoin.sol": {
+        content: fs.readFileSync("contracts/VeryGoodCoin.sol", "utf8").toString()
+      },
+      "VeryGoodCrowdsale.sol": {
+        content: fs.readFileSync("contracts/VeryGoodCrowdsale.sol", "utf8").toString()
+      },
+    },
+    language: 'Solidity',
+    settings: {
+      metadata: { useLiteralContent: true },
+      outputSelection: {
+        '*': {
+          '*': ['abi', 'evm.bytecode.object']
+        }
+      }
+    }
+  });
+
+  var compileOutput = solc.compileStandardWrapper(
+    compileOptions,
+    findImportsPath("node_modules/")
+  );
+
+  var jsonOutput = JSON.parse(compileOutput);
+
+  console.log(jsonOutput.errors);
+
+  return jsonOutput;
+};
+
 var deployClaimHolder = async (jsonClaimHolder, account) => {
   var abi = jsonClaimHolder.contracts["ClaimHolder.sol"].ClaimHolder.abi;
   var bytecode = jsonClaimHolder.contracts["ClaimHolder.sol"].ClaimHolder.evm.bytecode.object;
@@ -87,12 +128,44 @@ var deployClaimHolder = async (jsonClaimHolder, account) => {
   return claimHolder;
 };
 
+var deployVeryGoodCoin = async (jsonClaimHolder, account) => {
+  var abi = jsonClaimHolder.contracts["VeryGoodCoin.sol"].VeryGoodCoin.abi;
+  var bytecode = jsonClaimHolder.contracts["VeryGoodCoin.sol"].VeryGoodCoin.evm.bytecode.object;
+
+  var ClaimHolder = new web3.eth.Contract(abi);
+  var claimHolder = await ClaimHolder.deploy({
+    data: bytecode,
+  }).send({
+    from: account,
+    gas: 3000000,
+  });
+
+  return claimHolder;
+};
+
+var deployVeryGoodCrowdsale = async (jsonClaimHolder, account, constructorArguments) => {
+  var abi = jsonClaimHolder.contracts["VeryGoodCrowdsale.sol"].VeryGoodCrowdsale.abi;
+  var bytecode = jsonClaimHolder.contracts["VeryGoodCrowdsale.sol"].VeryGoodCrowdsale.evm.bytecode.object;
+
+  var ClaimHolder = new web3.eth.Contract(abi);
+  var claimHolder = await ClaimHolder.deploy({
+    data: bytecode,
+    arguments: constructorArguments,
+  }).send({
+    from: account,
+    gas: 3000000,
+  });
+
+  return claimHolder;
+};
+
 (async () => {
   accounts = await web3.eth.personal.getAccounts();
 
   console.log("Compiling ClaimHolder...");
 
   var jsonClaimHolder = compileClaimHolder();
+  var jsonCrowdsale = compileCrowdsale();
 
   // fractalId deploys claim holder
   console.log("Deploying Fractal's ClaimHolder...");
@@ -165,4 +238,60 @@ var deployClaimHolder = async (jsonClaimHolder, account) => {
   //console.log(await investorClaimHolder.methods.getClaim(fractalIdKYCclaimId).call());
 
   console.log(await investorClaimHolder.methods.getClaimIdsByType(CLAIM_TYPES.KYC).call());
+
+
+  // FractalLp deploys token and crowdsale
+
+  var veryGoodCoin = await deployVeryGoodCoin(
+    jsonCrowdsale,
+    accounts[0],
+  );
+
+  var veryGoodCrowdsale = await deployVeryGoodCrowdsale(
+    jsonCrowdsale,
+    accounts[0],
+    [10, accounts[0], veryGoodCoin.options.address, fractalIdClaimHolder.options.address]
+  );
+
+  await veryGoodCoin.methods.transferOwnership(veryGoodCrowdsale.options.address).send({from: accounts[0]});
+
+  // Investor makes transfer
+  
+  console.log(await veryGoodCoin.methods.balanceOf(accounts[2]).call());
+
+  var investABI = await veryGoodCrowdsale.methods.buyTokens(
+    investorClaimHolder.options.address
+  ).encodeABI();
+
+  // FIXME the reason this isn't working is because there's no eth being sent
+  await investorClaimHolder.methods.execute(
+    veryGoodCrowdsale.options.address,
+    web3.utils.toWei("1", "ether"),
+    investABI,
+  ).send({
+    gas: 4612388,
+    from: accounts[2],
+    value: web3.utils.toWei("1", "ether"),
+  });
+
+  //console.log(await veryGoodCrowdsale.getPastEvents("allEvents", {fromBlock: 0, toBlock: "latest"}));
+  console.log(await veryGoodCoin.methods.balanceOf(investorClaimHolder.options.address).call());
+  //console.log(await veryGoodCoin.methods.totalSupply().call());
+  //console.log(await veryGoodCrowdsale.methods.weiRaised().call());
+
+
+  /*
+  return
+
+  console.log(await veryGoodCoin.methods.balanceOf(accounts[2]).call());
+
+  await web3.eth.sendTransaction({
+    from: accounts[2],
+    to: veryGoodCrowdsale.options.address,
+    value: web3.utils.toWei("1", "ether"),
+    gas: 300000,
+  });
+
+  console.log(await veryGoodCoin.methods.balanceOf(accounts[2]).call());
+  */
 })()
