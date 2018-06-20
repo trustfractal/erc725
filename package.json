@@ -6,6 +6,7 @@
   "main": "main.js",
   "dependencies": {
     "babel-polyfill": "^6.26.0",
+    "openzeppelin-solidity": "^1.10.0",
     "web3": "^1.0.0-beta.34"
   },
   "devDependencies": {
@@ -13,7 +14,7 @@
     "babel-plugin-transform-runtime": "^6.23.0",
     "babel-preset-env": "^1.7.0",
     "ganache-cli": "6.1.3",
-    "solc": "0.4.22"
+    "solc": "0.4.23"
   },
   "scripts": {
     "start": "./node_modules/.bin/babel src/main.js --out-dir lib && node lib/src/main.js"
