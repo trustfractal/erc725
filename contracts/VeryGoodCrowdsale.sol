@@ -1,4 +1,4 @@
-pragma solidity 0.4.23;
+pragma solidity 0.4.24;
 
 import './VeryGoodCoin.sol';
 import './ClaimHolder.sol';
@@ -80,7 +80,7 @@ contract VeryGoodCrowdsale is MintedCrowdsale {
 
   function getRecoveredAddress(bytes sig, bytes32 dataHash)
       public
-      view
+      pure
       returns (address addr)
   {
       bytes32 ra;

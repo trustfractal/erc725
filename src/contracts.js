@@ -40,7 +40,7 @@ var compile = (filenames, importsPath) => {
 
   var jsonOutput = JSON.parse(compileOutput);
 
-  // console.log(jsonOutput.errors);
+  //if (jsonOutput.errors) { console.log(jsonOutput.errors); }
 
   return jsonOutput;
 };

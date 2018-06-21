@@ -31,7 +31,7 @@ Contracts.init(web3);
 
   var accounts = await web3.eth.personal.getAccounts();
 
-  console.log("Compiling ClaimHolder...");
+  console.log("Compiling contracts...");
 
   var jsonClaimHolder = Contracts.compileClaimHolder();
   var jsonCrowdsale = Contracts.compileCrowdsale();
