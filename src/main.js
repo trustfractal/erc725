@@ -30,6 +30,10 @@ Contracts.init(web3);
    */
 
   var accounts = await web3.eth.personal.getAccounts();
+  var fractalIdManagementAccount = accounts[0];
+  var fractalIdClaimAccount = accounts[1];
+  var fractalLpAccount = accounts[2];
+  var investorAccount = accounts[3];
 
   console.log("Compiling contracts...");
 
@@ -46,7 +50,7 @@ Contracts.init(web3);
   var fractalIdClaimHolder = await Contracts.deploy(
     "ClaimHolder",
     jsonClaimHolder,
-    accounts[0],
+    fractalIdManagementAccount,
   );
 
 
@@ -56,13 +60,13 @@ Contracts.init(web3);
 
   console.log("Adding a claim key to Fractal's ClaimHolder...");
 
-  var fractalIdClaimKey = web3.utils.keccak256(accounts[1]);
+  var fractalIdClaimKey = web3.utils.keccak256(fractalIdClaimAccount);
   await fractalIdClaimHolder.methods.addKey(
     fractalIdClaimKey,
     KEY_PURPOSES.CLAIM,
     KEY_TYPES.ECDSA,
   ).send({
-    from: accounts[0],
+    from: fractalIdManagementAccount,
     gas: 4612388,
   });
 
@@ -76,7 +80,7 @@ Contracts.init(web3);
   var investorClaimHolder = await Contracts.deploy(
     "ClaimHolder",
     jsonClaimHolder,
-    accounts[2],
+    investorAccount,
   );
 
 
@@ -92,7 +96,7 @@ Contracts.init(web3);
     CLAIM_TYPES.KYC,
     hexedData,
   );
-  var signature = await web3.eth.sign(hashedDataToSign, accounts[0]);
+  var signature = await web3.eth.sign(hashedDataToSign, fractalIdClaimAccount);
 
 
   /*
@@ -109,7 +113,7 @@ Contracts.init(web3);
       claimIssuer,
       signature,
       hexedData,
-      "",
+      "https://www.trustfractal.com/business/",
     ).encodeABI();
 
   // XXX comment this out to see the whole thing fail
@@ -120,7 +124,7 @@ Contracts.init(web3);
     addClaimABI,
   ).send({
     gas: 4612388,
-    from: accounts[2],
+    from: investorAccount,
   });
 
   // FractalLp checks for claim
@@ -139,20 +143,20 @@ Contracts.init(web3);
   var veryGoodCoin = await Contracts.deploy(
     "VeryGoodCoin",
     jsonCrowdsale,
-    accounts[0],
+    fractalLpAccount,
   );
 
   var veryGoodCrowdsale = await Contracts.deploy(
     "VeryGoodCrowdsale",
     jsonCrowdsale,
-    accounts[0],
-    [10, accounts[0], veryGoodCoin.options.address, fractalIdClaimHolder.options.address],
+    fractalLpAccount,
+    [10, fractalLpAccount, veryGoodCoin.options.address, fractalIdClaimHolder.options.address],
   );
 
   await veryGoodCoin.methods.transferOwnership(
     veryGoodCrowdsale.options.address
   ).send({
-    from: accounts[0]
+    from: fractalLpAccount,
   });
 
 
@@ -164,10 +168,10 @@ Contracts.init(web3);
   console.log(
     "\t",
     "Investor initial balance:",
-    await veryGoodCoin.methods.balanceOf(accounts[2]).call()
+    await veryGoodCoin.methods.balanceOf(investorAccount).call()
   );
 
-  var investABI = await veryGoodCrowdsale.methods.buyTokens(
+  var investABI = veryGoodCrowdsale.methods.buyTokens(
     investorClaimHolder.options.address
   ).encodeABI();
 
@@ -178,7 +182,7 @@ Contracts.init(web3);
     investABI,
   ).send({
     gas: 4612388,
-    from: accounts[2],
+    from: investorAccount,
     value: investmentAmount,
   });
 
